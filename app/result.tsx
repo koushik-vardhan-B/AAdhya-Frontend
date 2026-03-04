@@ -9,15 +9,32 @@ import { Colors, Spacing } from '../constants/theme';
 import { useLanguage } from '../context/LanguageContext';
 
 interface AnalysisResult {
+    message: string;
+    is_fraud: boolean;
     scam_probability: number;
     risk_level: 'Safe' | 'Suspicious' | 'High Risk';
-    fraud_type: string;
-    fraud_icon: keyof typeof Ionicons.glyphMap;
+    fraud_type: string | null;
     suspicious_keywords: string[];
     prevention_tips: string[];
     explanation: string;
-    helpline: string;
+    helpline: string | null;
+    // Translation fields
+    explanation_original?: string;
+    prevention_tips_original?: string[];
+    translated_to?: string;
 }
+
+// Map fraud_type to icon (backend doesn't return icons)
+const getFraudIcon = (fraudType: string | null): keyof typeof Ionicons.glyphMap => {
+    const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
+        "UPI Fraud": "card-outline",
+        "Lottery Scam": "gift-outline",
+        "Job Scam": "briefcase-outline",
+        "Phishing": "fish-outline",
+        "Others": "warning-outline",
+    };
+    return icons[fraudType || ""] || "alert-circle-outline";
+};
 
 // Animated card wrapper
 const AnimatedCard = ({ children, delay = 0, style }: { children: React.ReactNode, delay?: number, style?: any }) => {
@@ -36,39 +53,39 @@ const AnimatedCard = ({ children, delay = 0, style }: { children: React.ReactNod
 };
 
 export default function ResultScreen() {
-    const { message } = useLocalSearchParams<{ message: string }>();
+    const { resultData } = useLocalSearchParams<{ resultData: string }>();
     const router = useRouter();
     const { t } = useLanguage();
     const [result, setResult] = useState<AnalysisResult | null>(null);
 
-    const analyzeMessage = (text: string): AnalysisResult => {
-        const lower = text.toLowerCase();
-        if (lower.includes('lottery') || lower.includes('prize') || lower.includes('won')) {
-            return { scam_probability: 95, risk_level: 'High Risk', fraud_type: t.result.lotteryScam, fraud_icon: 'dice-outline', suspicious_keywords: ['lottery', 'prize', 'won'], prevention_tips: t.result.lotteryTips, explanation: t.result.lotteryExplanation, helpline: '1930' };
-        }
-        if (lower.includes('job') || lower.includes('hiring') || lower.includes('salary')) {
-            return { scam_probability: 80, risk_level: 'High Risk', fraud_type: t.result.jobScam, fraud_icon: 'briefcase-outline', suspicious_keywords: ['job', 'hiring', 'salary'], prevention_tips: t.result.jobTips, explanation: t.result.jobExplanation, helpline: '1930' };
-        }
-        if (lower.includes('upi') || lower.includes('pin') || lower.includes('bank') || lower.includes('kyc')) {
-            return { scam_probability: 90, risk_level: 'High Risk', fraud_type: t.result.upiBankFraud, fraud_icon: 'card-outline', suspicious_keywords: ['upi', 'pin', 'bank', 'kyc'], prevention_tips: t.result.upiTips, explanation: t.result.upiExplanation, helpline: '1930' };
-        }
-        if (lower.includes('click') || lower.includes('link') || lower.includes('http')) {
-            return { scam_probability: 65, risk_level: 'Suspicious', fraud_type: t.result.phishingAttempt, fraud_icon: 'fish-outline', suspicious_keywords: ['click', 'link', 'http'], prevention_tips: t.result.phishingTips, explanation: t.result.phishingExplanation, helpline: '1930' };
-        }
-        return { scam_probability: 10, risk_level: 'Safe', fraud_type: t.result.normalMessage, fraud_icon: 'checkmark-circle', suspicious_keywords: [], prevention_tips: t.result.safeTips, explanation: t.result.safeExplanation, helpline: '1930' };
-    };
-
     useEffect(() => {
-        if (message) {
-            setResult(analyzeMessage(message));
-        } else {
-            setResult({ scam_probability: 0, risk_level: 'Safe', fraud_type: 'Unknown', fraud_icon: 'help-circle-outline', suspicious_keywords: [], prevention_tips: [], explanation: '', helpline: '1930' });
+        if (resultData) {
+            try {
+                const parsed = JSON.parse(resultData);
+                setResult(parsed);
+            } catch {
+                // Fallback for invalid data
+                setResult({
+                    message: '',
+                    is_fraud: false,
+                    scam_probability: 0,
+                    risk_level: 'Safe',
+                    fraud_type: null,
+                    suspicious_keywords: [],
+                    prevention_tips: [],
+                    explanation: 'Could not parse result data.',
+                    helpline: '1930',
+                });
+            }
         }
-    }, [message, t]);
+    }, [resultData]);
 
     if (!result) return null;
 
     const riskColor = result.risk_level === 'Safe' ? Colors.safe : result.risk_level === 'Suspicious' ? Colors.suspicious : Colors.danger;
+    const fraudIcon = getFraudIcon(result.fraud_type);
+    const fraudTypeDisplay = result.fraud_type || t.result.normalMessage;
+
     const fraudTypeColors: Record<string, [string, string]> = {
         'Safe': [Colors.secondaryLight, Colors.secondary],
         'Suspicious': ['#F5C518', Colors.suspicious],
@@ -100,8 +117,8 @@ export default function ResultScreen() {
                         <Text style={styles.cardTitle}>{t.result.fraudTypeDetected}</Text>
                     </View>
                     <View style={styles.fraudTypeRow}>
-                        <Ionicons name={result.fraud_icon} size={22} color={riskColor} style={{ marginRight: 8 }} />
-                        <Text style={[styles.fraudType, { color: riskColor }]}>{result.fraud_type}</Text>
+                        <Ionicons name={fraudIcon} size={22} color={riskColor} style={{ marginRight: 8 }} />
+                        <Text style={[styles.fraudType, { color: riskColor }]}>{fraudTypeDisplay}</Text>
                     </View>
                     {result.suspicious_keywords.length > 0 && (
                         <View style={styles.kwSection}>

@@ -6,10 +6,11 @@ import { ActivityIndicator, Animated, KeyboardAvoidingView, Platform, ScrollView
 import { HelplineCard } from '../components/HelplineCard';
 import { Colors, Spacing } from '../constants/theme';
 import { useLanguage } from '../context/LanguageContext';
+import { analyzeMessage } from '../services/api';
 
 export default function HomeScreen() {
     const router = useRouter();
-    const { t } = useLanguage();
+    const { t, locale } = useLanguage();
     const [message, setMessage] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -57,20 +58,27 @@ export default function HomeScreen() {
         inputRange: [0, 1], outputRange: [Colors.border, Colors.secondary],
     });
 
-    const handleAnalyze = () => {
+    const handleAnalyze = async () => {
         if (!message.trim()) { alert(t.home.pasteMessage); return; }
         setIsAnalyzing(true);
 
         // Looping scanner animation while "analyzing"
-        Animated.loop(Animated.sequence([
+        const scanLoop = Animated.loop(Animated.sequence([
             Animated.timing(scannerAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
             Animated.timing(scannerAnim, { toValue: 0, duration: 800, useNativeDriver: true }),
-        ])).start();
+        ]));
+        scanLoop.start();
 
-        setTimeout(() => {
+        try {
+            const result = await analyzeMessage(message.trim(), locale);
+            scanLoop.stop();
+            router.push({ pathname: '/result', params: { resultData: JSON.stringify(result) } });
+        } catch (error: any) {
+            scanLoop.stop();
+            alert(error.message || 'Something went wrong. Please try again.');
+        } finally {
             setIsAnalyzing(false);
-            router.push({ pathname: '/result', params: { message } });
-        }, 1500);
+        }
     };
 
     const scannerBounce = scannerAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
