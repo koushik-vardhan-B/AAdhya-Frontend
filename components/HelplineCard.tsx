@@ -1,80 +1,68 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
-import { Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Colors, Spacing } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
 
 export const HelplineCard = () => {
+    const { t } = useLanguage();
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+    const slideAnim = useRef(new Animated.Value(30)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(opacityAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+            Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 8, useNativeDriver: true }),
+        ]).start();
+
+        Animated.loop(Animated.sequence([
+            Animated.timing(pulseAnim, { toValue: 1.12, duration: 700, useNativeDriver: true }),
+            Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        ])).start();
+    }, []);
+
     const callHelpline = () => {
-        let phoneNumber = 'tel:${1930}';
-        if (Platform.OS !== 'android') {
-            phoneNumber = 'telprompt:${1930}';
-        }
-        Linking.openURL(phoneNumber);
+        Linking.openURL(Platform.OS !== 'android' ? 'telprompt:1930' : 'tel:1930');
     };
 
     return (
-        <View style={styles.card}>
-            <View style={styles.iconContainer}>
-                <Ionicons name="shield-checkmark" size={32} color={Colors.surface} />
-            </View>
-            <View style={styles.textContainer}>
-                <Text style={styles.title}>Cybercrime Helpline</Text>
-                <Text style={styles.subtitle}>Report fraud immediately</Text>
-            </View>
-            <TouchableOpacity style={styles.callButton} onPress={callHelpline}>
-                <Ionicons name="call" size={24} color={Colors.primary} />
-                <Text style={styles.callText}>1930</Text>
-            </TouchableOpacity>
-        </View>
+        <Animated.View style={[styles.container, { opacity: opacityAnim, transform: [{ translateY: slideAnim }] }]}>
+            <LinearGradient colors={[Colors.primaryDark, Colors.primary, Colors.primaryLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.gradient}>
+                <View style={styles.leftSection}>
+                    <Ionicons name="shield-checkmark" size={32} color={Colors.wheat} />
+                    <View style={styles.textBlock}>
+                        <Text style={styles.title}>{t.helpline.title}</Text>
+                        <Text style={styles.subtitle}>{t.helpline.subtitle}</Text>
+                    </View>
+                </View>
+
+                <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                    <TouchableOpacity style={styles.callBtn} onPress={callHelpline} activeOpacity={0.8}>
+                        <Ionicons name="call" size={18} color={Colors.primary} />
+                        <Text style={styles.callText}>1930</Text>
+                    </TouchableOpacity>
+                </Animated.View>
+            </LinearGradient>
+        </Animated.View>
     );
 };
 
 const styles = StyleSheet.create({
-    card: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: Colors.surface,
-        padding: Spacing.m,
-        borderRadius: 12,
-        borderLeftWidth: 6,
-        borderLeftColor: Colors.primary,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-        marginVertical: Spacing.m,
+    container: {
+        borderRadius: 16, overflow: 'hidden', marginVertical: Spacing.m,
+        shadowColor: Colors.primaryDark, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 12, elevation: 6,
     },
-    iconContainer: {
-        backgroundColor: Colors.primary,
-        padding: Spacing.s,
-        borderRadius: 8,
-        marginRight: Spacing.m,
+    gradient: { flexDirection: 'row', alignItems: 'center', padding: Spacing.m, justifyContent: 'space-between' },
+    leftSection: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+    textBlock: { marginLeft: Spacing.m, flex: 1 },
+    title: { fontSize: 15, fontWeight: '800', color: Colors.wheat },
+    subtitle: { fontSize: 12, color: 'rgba(245,222,179,0.8)', marginTop: 2 },
+    callBtn: {
+        backgroundColor: Colors.wheat, paddingHorizontal: 16, paddingVertical: 10,
+        borderRadius: 20, flexDirection: 'row', alignItems: 'center',
+        shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2,
     },
-    textContainer: {
-        flex: 1,
-    },
-    title: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: Colors.text,
-    },
-    subtitle: {
-        fontSize: 14,
-        color: Colors.textLight,
-    },
-    callButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FDEBD0',
-        paddingHorizontal: Spacing.m,
-        paddingVertical: Spacing.s,
-        borderRadius: 20,
-    },
-    callText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: Colors.primary,
-        marginLeft: 4,
-    },
+    callText: { fontSize: 18, fontWeight: '900', color: Colors.primary, marginLeft: 6 },
 });

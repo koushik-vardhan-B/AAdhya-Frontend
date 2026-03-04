@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, TouchableOpacityProps, ViewStyle } from 'react-native';
 import { Colors, Spacing } from '../constants/theme';
@@ -10,54 +11,68 @@ interface ThemedButtonProps extends TouchableOpacityProps {
 }
 
 export const ThemedButton: React.FC<ThemedButtonProps> = ({ label, variant = 'primary', style, textStyle, ...props }) => {
-    let backgroundColor = Colors.primary;
-    let textColor = Colors.surface;
-    let borderColor = 'transparent';
-    let borderWidth = 0;
-
-    switch (variant) {
-        case 'secondary':
-            backgroundColor = Colors.secondary;
-            break;
-        case 'danger':
-            backgroundColor = Colors.danger;
-            break;
-        case 'outline':
-            backgroundColor = 'transparent';
-            textColor = Colors.primary;
-            borderColor = Colors.primary;
-            borderWidth = 1;
-            break;
+    if (variant === 'outline') {
+        return (
+            <TouchableOpacity style={[styles.outlineButton, style]} activeOpacity={0.8} {...props}>
+                <Text style={[styles.outlineText, textStyle]}>{label}</Text>
+            </TouchableOpacity>
+        );
     }
 
+    const gradients: Record<string, [string, string, string]> = {
+        primary: [Colors.primaryLight, Colors.primary, Colors.primaryDark],
+        secondary: [Colors.secondaryLight, Colors.secondary, Colors.secondaryDark],
+        danger: ['#C0392B', '#A4161A', '#7B0000'],
+    };
+
+    const grad = gradients[variant] || gradients.primary;
+
     return (
-        <TouchableOpacity
-            style={[styles.button, { backgroundColor, borderColor, borderWidth }, style]}
-            activeOpacity={0.8}
-            {...props}
-        >
-            <Text style={[styles.text, { color: textColor }, textStyle]}>{label}</Text>
+        <TouchableOpacity style={[styles.buttonWrapper, style]} activeOpacity={0.85} {...props}>
+            <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.gradient}>
+                <Text style={[styles.text, textStyle]}>{label}</Text>
+            </LinearGradient>
         </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
-    button: {
+    buttonWrapper: {
+        borderRadius: 12,
+        overflow: 'hidden',
+        marginVertical: Spacing.s,
+        shadowColor: Colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    gradient: {
         paddingVertical: Spacing.m,
         paddingHorizontal: Spacing.xl,
-        borderRadius: 8,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-        marginVertical: Spacing.s,
     },
     text: {
         fontSize: 18,
-        fontWeight: 'bold',
+        fontWeight: '800',
+        color: Colors.wheat,
         letterSpacing: 0.5,
+    },
+    outlineButton: {
+        paddingVertical: Spacing.m,
+        paddingHorizontal: Spacing.xl,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: Colors.primary,
+        marginVertical: Spacing.s,
+        backgroundColor: 'transparent',
+    },
+    outlineText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: Colors.primary,
     },
 });

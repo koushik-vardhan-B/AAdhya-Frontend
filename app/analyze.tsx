@@ -1,17 +1,20 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ThemedButton } from '../components/ThemedButton';
 import { Colors, Spacing } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function AnalyzeScreen() {
     const router = useRouter();
+    const { t } = useLanguage();
     const [message, setMessage] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
     const handleAnalyze = () => {
         if (!message.trim()) {
-            alert("Please paste a message to verify.");
+            alert(t.analyze.pasteMessage);
             return;
         }
 
@@ -36,14 +39,14 @@ export default function AnalyzeScreen() {
             <ScrollView contentContainerStyle={styles.scrollContent}>
 
                 <View style={styles.header}>
-                    <Text style={styles.title}>Did you receive a suspicious message?</Text>
-                    <Text style={styles.subtitle}>Paste the SMS, WhatsApp message, or link below to check if it's safe or a scam.</Text>
+                    <Text style={styles.title}>{t.analyze.title}</Text>
+                    <Text style={styles.subtitle}>{t.analyze.subtitle}</Text>
                 </View>
 
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.textArea}
-                        placeholder="Paste your message here... (e.g. 'You won a lottery of Rs 25,00,000! Click here to claim...')"
+                        placeholder={t.analyze.placeholder}
                         multiline
                         numberOfLines={6}
                         value={message}
@@ -55,20 +58,23 @@ export default function AnalyzeScreen() {
                 {isAnalyzing ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={Colors.primary} />
-                        <Text style={styles.loadingText}>Analyzing risk and searching for scams...</Text>
+                        <Text style={styles.loadingText}>{t.analyze.analyzing}</Text>
                     </View>
                 ) : (
                     <ThemedButton
-                        label="Check Now"
+                        label={t.analyze.checkNow}
                         onPress={handleAnalyze}
                     />
                 )}
 
                 <View style={styles.tipsContainer}>
-                    <Text style={styles.tipsTitle}>💡 Safety Tips</Text>
-                    <Text style={styles.tipText}>• Never share your OTP with anyone.</Text>
-                    <Text style={styles.tipText}>• Do not click on unknown links.</Text>
-                    <Text style={styles.tipText}>• Banks never ask for your PIN to deposit money.</Text>
+                    <View style={styles.tipsTitleRow}>
+                        <Ionicons name="bulb-outline" size={18} color={Colors.secondary} style={{ marginRight: 6 }} />
+                        <Text style={styles.tipsTitle}>{t.analyze.tipsTitle}</Text>
+                    </View>
+                    <Text style={styles.tipText}>• {t.analyze.tip1}</Text>
+                    <Text style={styles.tipText}>• {t.analyze.tip2}</Text>
+                    <Text style={styles.tipText}>• {t.analyze.tip3}</Text>
                 </View>
 
             </ScrollView>
@@ -133,11 +139,15 @@ const styles = StyleSheet.create({
         borderLeftWidth: 4,
         borderLeftColor: Colors.secondary,
     },
+    tipsTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: Spacing.s,
+    },
     tipsTitle: {
         fontSize: 18,
         fontWeight: 'bold',
         color: Colors.secondary,
-        marginBottom: Spacing.s,
     },
     tipText: {
         fontSize: 15,
