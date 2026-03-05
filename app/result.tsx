@@ -9,10 +9,9 @@ import { Colors, Spacing } from '../constants/theme';
 import { useLanguage } from '../context/LanguageContext';
 
 // ---------------------------------------------------------------------------
-// Interface — covers ALL fields from both /api/predict and /api/predict-image
+// Interface — covers ALL fields from /api/predict AND /api/predict-image
 // ---------------------------------------------------------------------------
 interface AnalysisResult {
-    // Core fields (both endpoints)
     message: string;
     is_fraud: boolean;
     scam_probability: number;
@@ -23,40 +22,32 @@ interface AnalysisResult {
     explanation: string;
     helpline: string | null;
     detected_language?: string;
-
-    // URL analysis (when URLs are found in text)
     url_analysis: {
         urls_found: string[];
         url_risk_score: number;
         url_warnings: string[];
     } | null;
-
-    // OCR fields (only from /api/predict-image)
     extracted_text?: string;
     ocr_confidence?: number;
     ocr_lines?: { text: string; confidence: number }[];
-
-    // Processing time
     processing_time?: {
         total_ms: number;
-        ocr_ms?: number;      // only from predict-image
+        ocr_ms?: number;
         layer1_ms: number;
         layer2_ms: number;
     };
-
-    // Translation fields (when language != "en")
     explanation_original?: string;
     prevention_tips_original?: string[];
     translated_to?: string;
 }
 
-// Map fraud_type to icon
 const getFraudIcon = (fraudType: string | null): keyof typeof Ionicons.glyphMap => {
     const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
         "UPI Fraud": "card-outline",
         "Lottery Scam": "gift-outline",
         "Job Scam": "briefcase-outline",
         "Phishing": "fish-outline",
+        "Investment Scam": "trending-up-outline",
         "Others": "warning-outline",
     };
     return icons[fraudType || ""] || "alert-circle-outline";
@@ -86,23 +77,8 @@ export default function ResultScreen() {
 
     useEffect(() => {
         if (resultData) {
-            try {
-                const parsed = JSON.parse(resultData);
-                setResult(parsed);
-            } catch {
-                setResult({
-                    message: '',
-                    is_fraud: false,
-                    scam_probability: 0,
-                    risk_level: 'Safe',
-                    fraud_type: null,
-                    suspicious_keywords: [],
-                    prevention_tips: [],
-                    explanation: 'Could not parse result data.',
-                    helpline: '1930',
-                    url_analysis: null,
-                });
-            }
+            try { setResult(JSON.parse(resultData)); }
+            catch { setResult({ message: '', is_fraud: false, scam_probability: 0, risk_level: 'Safe', fraud_type: null, suspicious_keywords: [], prevention_tips: [], explanation: 'Could not parse result data.', helpline: '1930', url_analysis: null }); }
         }
     }, [resultData]);
 
@@ -207,7 +183,7 @@ export default function ResultScreen() {
                     </AnimatedCard>
                 )}
 
-                {/* ── URL Analysis (when backend detects URLs) ── */}
+                {/* ── URL Analysis ── */}
                 {result.url_analysis && result.url_analysis.urls_found && result.url_analysis.urls_found.length > 0 && (
                     <AnimatedCard delay={450} style={[styles.card, { borderLeftWidth: 5, borderLeftColor: Colors.danger }]}>
                         <View style={[styles.cardHeaderRow, { borderBottomColor: Colors.danger + '44' }]}>

@@ -40,6 +40,17 @@ export const Colors = {
   soil: '#7A5235',           // Soil brown — for shadows
   leaf: '#8AA68C',           // Leaf sage
 
+  // ── Analysis Dashboard — premium semantic palette ──
+  analysisBg: '#1E1E2E',
+  analysisBgLight: '#2A2A3C',
+  cardGlass: 'rgba(255,255,255,0.08)',
+  cardGlassBorder: 'rgba(255,255,255,0.12)',
+
+  safeGlow: '#22C55E',
+  warningGlow: '#F59E0B',
+  dangerGlow: '#EF4444',
+  accentBlue: '#6366F1',
+
   // Surface
   white: '#FDFAF4',
 };

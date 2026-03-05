@@ -193,9 +193,9 @@ const styles = StyleSheet.create({
     keywordBadge: {
         flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.backgroundDark,
         borderRadius: 12, paddingLeft: 12, paddingRight: 4, paddingVertical: 6,
-        borderWidth: 1, borderColor: Colors.border,
+        borderWidth: 1, borderColor: Colors.border, maxWidth: '100%', flexShrink: 1,
     },
-    keywordText: { fontSize: 13, fontWeight: '600', color: Colors.text, marginRight: 6 },
+    keywordText: { fontSize: 13, fontWeight: '600', color: Colors.text, marginRight: 6, flexShrink: 1 },
     keywordFreqBadge: { backgroundColor: Colors.primary + '25', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
     keywordFreq: { fontSize: 11, fontWeight: '700', color: Colors.primary },
 
