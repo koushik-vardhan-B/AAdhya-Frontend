@@ -150,6 +150,74 @@ export const en = {
         beSafe: 'Be safe with us',
         analysisResult: 'Analysis Result',
         createAccount: 'Create Account',
+        scanImage: 'Scan Screenshot',
+        dashboard: 'Dashboard',
+        history: 'Scan History',
+        community: 'Community',
+    },
+
+    // Quick Actions (Home)
+    quickActions: {
+        title: 'Explore',
+        scanImage: 'Scan Screenshot',
+        scanImageDesc: 'Upload or capture image',
+        dashboard: 'Dashboard',
+        dashboardDesc: 'Stats & insights',
+        history: 'History',
+        historyDesc: 'Past scan results',
+        community: 'Community',
+        communityDesc: 'Reported scams',
+    },
+
+    // Scan Image
+    scanImage: {
+        title: 'Scan a Screenshot',
+        subtitle: 'Upload a screenshot of a suspicious SMS or message',
+        pickImage: 'Choose from Gallery',
+        takePhoto: 'Take a Photo',
+        analyzeBtn: 'Analyze Screenshot',
+        analyzing: 'Extracting text & analyzing...',
+        noText: 'No text could be extracted from the image.',
+        ocrConfidence: 'OCR Confidence',
+        extractedText: 'Extracted Text',
+    },
+
+    // Dashboard
+    dashboard: {
+        title: 'Detection Dashboard',
+        totalScans: 'Total Scans',
+        fraudDetected: 'Fraud Detected',
+        safeMessages: 'Safe Messages',
+        fraudRate: 'Fraud Rate',
+        topPatterns: 'Top Scam Patterns',
+        topKeywords: 'Flagged Keywords',
+        systemStatus: 'System Status',
+        operational: 'Operational',
+        noData: 'No data yet. Analyze some messages first!',
+        refresh: 'Refresh',
+    },
+
+    // History
+    history: {
+        title: 'Scan History',
+        noScans: 'No scans yet. Start by analyzing a message!',
+        viewDetail: 'View Details',
+        scannedAt: 'Scanned',
+        fullMessage: 'Full Message',
+        keywords: 'Keywords',
+        explanation: 'Explanation',
+        tips: 'Prevention Tips',
+    },
+
+    // Community
+    community: {
+        title: 'Community Reports',
+        subtitle: 'Recent scam reports from the community',
+        noReports: 'No community reports yet.',
+        filterAll: 'All',
+        translate: 'Translate',
+        translating: 'Translating...',
+        reportedAt: 'Reported',
     },
 };
 

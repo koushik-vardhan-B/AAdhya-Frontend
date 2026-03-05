@@ -1,18 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ThemedButton } from '../components/ThemedButton';
 import { Colors, Spacing } from '../constants/theme';
 import { useLanguage } from '../context/LanguageContext';
+import { analyzeMessage } from '../services/api';
 
 export default function AnalyzeScreen() {
     const router = useRouter();
-    const { t } = useLanguage();
+    const { t, locale } = useLanguage();
     const [message, setMessage] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-    const handleAnalyze = () => {
+    const handleAnalyze = async () => {
         if (!message.trim()) {
             alert(t.analyze.pasteMessage);
             return;
@@ -20,15 +21,17 @@ export default function AnalyzeScreen() {
 
         setIsAnalyzing(true);
 
-        // Simulate AI API Call delay
-        setTimeout(() => {
-            setIsAnalyzing(false);
-            // Pass the message to the result screen
+        try {
+            const result = await analyzeMessage(message.trim(), locale);
             router.push({
                 pathname: '/result',
-                params: { message }
+                params: { resultData: JSON.stringify(result) },
             });
-        }, 1500);
+        } catch (error: any) {
+            alert(error.message || 'Something went wrong. Please try again.');
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     return (

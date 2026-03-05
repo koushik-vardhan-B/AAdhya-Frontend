@@ -50,6 +50,30 @@ export default function Layout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="scan-image"
+          options={{
+            title: 'Scan Screenshot',
+          }}
+        />
+        <Stack.Screen
+          name="dashboard"
+          options={{
+            title: 'Dashboard',
+          }}
+        />
+        <Stack.Screen
+          name="history"
+          options={{
+            title: 'Scan History',
+          }}
+        />
+        <Stack.Screen
+          name="community"
+          options={{
+            title: 'Community',
+          }}
+        />
       </Stack>
     </LanguageProvider>
   );

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { HelplineCard } from '../components/HelplineCard';
 import { Colors, Spacing } from '../constants/theme';
@@ -165,6 +165,35 @@ export default function HomeScreen() {
                         ))}
                     </Animated.View>
 
+                    {/* Quick Actions */}
+                    <Animated.View style={[styles.quickActionsCard, { opacity: tipsOpacity }]}>
+                        <View style={styles.tipsTitleRow}>
+                            <Ionicons name="grid-outline" size={18} color={Colors.primary} style={{ marginRight: 6 }} />
+                            <Text style={[styles.tipsTitle, { color: Colors.primary }]}>{t.quickActions.title}</Text>
+                        </View>
+                        <View style={styles.quickGrid}>
+                            {([
+                                { icon: 'camera-outline' as const, label: t.quickActions.scanImage, desc: t.quickActions.scanImageDesc, route: '/scan-image', color: Colors.primary },
+                                { icon: 'bar-chart-outline' as const, label: t.quickActions.dashboard, desc: t.quickActions.dashboardDesc, route: '/dashboard', color: Colors.suspicious },
+                                { icon: 'time-outline' as const, label: t.quickActions.history, desc: t.quickActions.historyDesc, route: '/history', color: Colors.safe },
+                                { icon: 'people-outline' as const, label: t.quickActions.community, desc: t.quickActions.communityDesc, route: '/community', color: Colors.danger },
+                            ]).map((action, i) => (
+                                <TouchableOpacity
+                                    key={i}
+                                    style={styles.quickBtn}
+                                    onPress={() => router.push(action.route as any)}
+                                    activeOpacity={0.8}
+                                >
+                                    <View style={[styles.quickIconBg, { backgroundColor: action.color + '20' }]}>
+                                        <Ionicons name={action.icon} size={22} color={action.color} />
+                                    </View>
+                                    <Text style={styles.quickLabel}>{action.label}</Text>
+                                    <Text style={styles.quickDesc}>{action.desc}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </Animated.View>
+
                     {/* Helpline */}
                     <Animated.View style={{ opacity: tipsOpacity }}>
                         <HelplineCard />
@@ -219,4 +248,19 @@ const styles = StyleSheet.create({
     tipsTitle: { fontSize: 17, fontWeight: '800', color: Colors.secondary },
     tipRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: Spacing.s },
     tipText: { fontSize: 14, color: Colors.text, flex: 1, lineHeight: 20 },
+
+    quickActionsCard: {
+        backgroundColor: Colors.surface, borderRadius: 16, padding: Spacing.l, marginBottom: Spacing.m,
+        borderWidth: 1.5, borderColor: Colors.border,
+        shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 3,
+    },
+    quickGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: Spacing.s },
+    quickBtn: {
+        width: '48%', backgroundColor: Colors.backgroundDark, borderRadius: 14, padding: Spacing.m,
+        marginBottom: Spacing.m, alignItems: 'flex-start',
+        borderWidth: 1, borderColor: Colors.borderLight,
+    },
+    quickIconBg: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
+    quickLabel: { fontSize: 14, fontWeight: '800', color: Colors.text, marginBottom: 2 },
+    quickDesc: { fontSize: 12, color: Colors.textLight, lineHeight: 16 },
 });

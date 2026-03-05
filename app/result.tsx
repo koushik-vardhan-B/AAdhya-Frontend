@@ -8,7 +8,11 @@ import { RiskMeter } from '../components/RiskMeter';
 import { Colors, Spacing } from '../constants/theme';
 import { useLanguage } from '../context/LanguageContext';
 
+// ---------------------------------------------------------------------------
+// Interface — covers ALL fields from both /api/predict and /api/predict-image
+// ---------------------------------------------------------------------------
 interface AnalysisResult {
+    // Core fields (both endpoints)
     message: string;
     is_fraud: boolean;
     scam_probability: number;
@@ -18,13 +22,35 @@ interface AnalysisResult {
     prevention_tips: string[];
     explanation: string;
     helpline: string | null;
-    // Translation fields
+    detected_language?: string;
+
+    // URL analysis (when URLs are found in text)
+    url_analysis: {
+        urls_found: string[];
+        url_risk_score: number;
+        url_warnings: string[];
+    } | null;
+
+    // OCR fields (only from /api/predict-image)
+    extracted_text?: string;
+    ocr_confidence?: number;
+    ocr_lines?: { text: string; confidence: number }[];
+
+    // Processing time
+    processing_time?: {
+        total_ms: number;
+        ocr_ms?: number;      // only from predict-image
+        layer1_ms: number;
+        layer2_ms: number;
+    };
+
+    // Translation fields (when language != "en")
     explanation_original?: string;
     prevention_tips_original?: string[];
     translated_to?: string;
 }
 
-// Map fraud_type to icon (backend doesn't return icons)
+// Map fraud_type to icon
 const getFraudIcon = (fraudType: string | null): keyof typeof Ionicons.glyphMap => {
     const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
         "UPI Fraud": "card-outline",
@@ -64,7 +90,6 @@ export default function ResultScreen() {
                 const parsed = JSON.parse(resultData);
                 setResult(parsed);
             } catch {
-                // Fallback for invalid data
                 setResult({
                     message: '',
                     is_fraud: false,
@@ -75,6 +100,7 @@ export default function ResultScreen() {
                     prevention_tips: [],
                     explanation: 'Could not parse result data.',
                     helpline: '1930',
+                    url_analysis: null,
                 });
             }
         }
@@ -97,7 +123,7 @@ export default function ResultScreen() {
         <LinearGradient colors={[Colors.backgroundDark, Colors.background]} style={styles.gradBg}>
             <ScrollView contentContainerStyle={styles.content}>
 
-                {/* Header Banner */}
+                {/* ── Header Banner ── */}
                 <AnimatedCard delay={0} style={styles.headerBanner}>
                     <LinearGradient colors={[...headerGrad, 'rgba(0,0,0,0.6)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerBannerGrad}>
                         <Text style={styles.bannerLabel}>{t.result.analysisComplete}</Text>
@@ -105,12 +131,12 @@ export default function ResultScreen() {
                     </LinearGradient>
                 </AnimatedCard>
 
-                {/* Risk Meter */}
+                {/* ── Risk Meter ── */}
                 <AnimatedCard delay={100}>
                     <RiskMeter score={result.scam_probability} classification={result.risk_level} />
                 </AnimatedCard>
 
-                {/* Fraud Type + Keywords */}
+                {/* ── Fraud Type + Keywords ── */}
                 <AnimatedCard delay={200} style={styles.card}>
                     <View style={[styles.cardHeaderRow, { borderBottomColor: riskColor + '44' }]}>
                         <Ionicons name="warning-outline" size={22} color={riskColor} />
@@ -120,7 +146,7 @@ export default function ResultScreen() {
                         <Ionicons name={fraudIcon} size={22} color={riskColor} style={{ marginRight: 8 }} />
                         <Text style={[styles.fraudType, { color: riskColor }]}>{fraudTypeDisplay}</Text>
                     </View>
-                    {result.suspicious_keywords.length > 0 && (
+                    {result.suspicious_keywords && result.suspicious_keywords.length > 0 && (
                         <View style={styles.kwSection}>
                             <View style={styles.kwLabelRow}>
                                 <Ionicons name="search-outline" size={14} color={Colors.textLight} style={{ marginRight: 4 }} />
@@ -137,7 +163,26 @@ export default function ResultScreen() {
                     )}
                 </AnimatedCard>
 
-                {/* AI Explanation */}
+                {/* ── Extracted Text (Image scans only) ── */}
+                {result.extracted_text ? (
+                    <AnimatedCard delay={250} style={styles.card}>
+                        <View style={[styles.cardHeaderRow, { borderBottomColor: Colors.gold + '44' }]}>
+                            <Ionicons name="document-text-outline" size={22} color={Colors.gold} />
+                            <Text style={styles.cardTitle}>Extracted Text (OCR)</Text>
+                        </View>
+                        <Text style={styles.extractedText}>{result.extracted_text}</Text>
+                        {result.ocr_confidence != null && (
+                            <View style={styles.ocrConfRow}>
+                                <Ionicons name="analytics-outline" size={14} color={Colors.textMuted} style={{ marginRight: 4 }} />
+                                <Text style={styles.ocrConfText}>
+                                    OCR Confidence: {(result.ocr_confidence * 100).toFixed(1)}%
+                                </Text>
+                            </View>
+                        )}
+                    </AnimatedCard>
+                ) : null}
+
+                {/* ── AI Explanation ── */}
                 <AnimatedCard delay={300} style={styles.card}>
                     <View style={[styles.cardHeaderRow, { borderBottomColor: Colors.primaryLight + '55' }]}>
                         <Ionicons name="bulb-outline" size={22} color={Colors.primaryLight} />
@@ -146,26 +191,97 @@ export default function ResultScreen() {
                     <Text style={styles.explanation}>"{result.explanation}"</Text>
                 </AnimatedCard>
 
-                {/* Prevention Tips */}
-                <AnimatedCard delay={400} style={[styles.card, styles.tipsCard]}>
-                    <View style={[styles.cardHeaderRow, { borderBottomColor: Colors.secondaryLight + '55' }]}>
-                        <Ionicons name="shield-checkmark-outline" size={22} color={Colors.secondary} />
-                        <Text style={styles.cardTitle}>{t.result.preventionTips}</Text>
-                    </View>
-                    {result.prevention_tips.map((tip, i) => (
-                        <View key={i} style={styles.tipRow}>
-                            <Ionicons name="leaf-outline" size={14} color={Colors.secondary} style={{ marginRight: Spacing.s, marginTop: 3 }} />
-                            <Text style={styles.tipText}>{tip}</Text>
+                {/* ── Prevention Tips ── */}
+                {result.prevention_tips && result.prevention_tips.length > 0 && (
+                    <AnimatedCard delay={400} style={[styles.card, styles.tipsCard]}>
+                        <View style={[styles.cardHeaderRow, { borderBottomColor: Colors.secondaryLight + '55' }]}>
+                            <Ionicons name="shield-checkmark-outline" size={22} color={Colors.secondary} />
+                            <Text style={styles.cardTitle}>{t.result.preventionTips}</Text>
                         </View>
-                    ))}
-                </AnimatedCard>
+                        {result.prevention_tips.map((tip, i) => (
+                            <View key={i} style={styles.tipRow}>
+                                <Ionicons name="leaf-outline" size={14} color={Colors.secondary} style={{ marginRight: Spacing.s, marginTop: 3 }} />
+                                <Text style={styles.tipText}>{tip}</Text>
+                            </View>
+                        ))}
+                    </AnimatedCard>
+                )}
 
-                {/* Helpline */}
-                <AnimatedCard delay={500}>
+                {/* ── URL Analysis (when backend detects URLs) ── */}
+                {result.url_analysis && result.url_analysis.urls_found && result.url_analysis.urls_found.length > 0 && (
+                    <AnimatedCard delay={450} style={[styles.card, { borderLeftWidth: 5, borderLeftColor: Colors.danger }]}>
+                        <View style={[styles.cardHeaderRow, { borderBottomColor: Colors.danger + '44' }]}>
+                            <Ionicons name="link-outline" size={22} color={Colors.danger} />
+                            <Text style={styles.cardTitle}>URL Analysis</Text>
+                        </View>
+                        <View style={styles.urlRiskRow}>
+                            <Text style={styles.urlRiskLabel}>Risk Score:</Text>
+                            <View style={[styles.urlRiskBadge, { backgroundColor: Colors.danger + '20' }]}>
+                                <Text style={[styles.urlRiskScore, { color: Colors.danger }]}>
+                                    {result.url_analysis.url_risk_score}/100
+                                </Text>
+                            </View>
+                        </View>
+                        {result.url_analysis.urls_found.map((url, i) => (
+                            <View key={i} style={styles.urlItem}>
+                                <Ionicons name="globe-outline" size={14} color={Colors.textMuted} style={{ marginRight: 6 }} />
+                                <Text style={styles.urlText} numberOfLines={1}>{url}</Text>
+                            </View>
+                        ))}
+                        {result.url_analysis.url_warnings && result.url_analysis.url_warnings.length > 0 && (
+                            <View style={{ marginTop: Spacing.s }}>
+                                {result.url_analysis.url_warnings.map((w, i) => (
+                                    <View key={i} style={styles.urlWarningRow}>
+                                        <Ionicons name="alert-circle" size={14} color={Colors.suspicious} style={{ marginRight: 6, marginTop: 2 }} />
+                                        <Text style={styles.urlWarningText}>{w}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </AnimatedCard>
+                )}
+
+                {/* ── Processing Time ── */}
+                {result.processing_time && (
+                    <AnimatedCard delay={500} style={styles.metaCard}>
+                        <View style={styles.metaRow}>
+                            <Ionicons name="speedometer-outline" size={16} color={Colors.textMuted} />
+                            <Text style={styles.metaLabel}>Total Time</Text>
+                            <Text style={styles.metaValue}>{result.processing_time.total_ms.toFixed(0)}ms</Text>
+                        </View>
+                        {result.processing_time.ocr_ms != null && (
+                            <View style={styles.metaRow}>
+                                <Ionicons name="camera-outline" size={16} color={Colors.textMuted} />
+                                <Text style={styles.metaLabel}>OCR</Text>
+                                <Text style={styles.metaValue}>{result.processing_time.ocr_ms.toFixed(0)}ms</Text>
+                            </View>
+                        )}
+                        <View style={styles.metaRow}>
+                            <Ionicons name="funnel-outline" size={16} color={Colors.textMuted} />
+                            <Text style={styles.metaLabel}>Layer 1</Text>
+                            <Text style={styles.metaValue}>{result.processing_time.layer1_ms.toFixed(0)}ms</Text>
+                        </View>
+                        <View style={[styles.metaRow, { borderBottomWidth: 0 }]}>
+                            <Ionicons name="flask-outline" size={16} color={Colors.textMuted} />
+                            <Text style={styles.metaLabel}>Layer 2</Text>
+                            <Text style={styles.metaValue}>{result.processing_time.layer2_ms.toFixed(0)}ms</Text>
+                        </View>
+                        {result.detected_language && (
+                            <View style={[styles.metaRow, { borderBottomWidth: 0, marginTop: 4 }]}>
+                                <Ionicons name="language-outline" size={16} color={Colors.textMuted} />
+                                <Text style={styles.metaLabel}>Detected Language</Text>
+                                <Text style={styles.metaValue}>{result.detected_language.toUpperCase()}</Text>
+                            </View>
+                        )}
+                    </AnimatedCard>
+                )}
+
+                {/* ── Helpline ── */}
+                <AnimatedCard delay={550}>
                     <HelplineCard />
                 </AnimatedCard>
 
-                {/* Actions */}
+                {/* ── Actions ── */}
                 <AnimatedCard delay={600} style={styles.actions}>
                     <TouchableOpacity onPress={() => router.back()} style={styles.outlineBtn}>
                         <View style={styles.outlineBtnRow}>
@@ -212,13 +328,37 @@ const styles = StyleSheet.create({
     kwLabelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.s },
     kwLabel: { fontSize: 13, color: Colors.textLight, fontWeight: '600' },
     kwRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    kwBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, borderWidth: 1.5, backgroundColor: Colors.backgroundDark, margin: 2 },
-    kwText: { fontSize: 13, fontWeight: '700' },
+    kwBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, borderWidth: 1.5, backgroundColor: Colors.backgroundDark, margin: 2, maxWidth: '100%', flexShrink: 1 },
+    kwText: { fontSize: 13, fontWeight: '700', flexShrink: 1 },
+
+    // Extracted text (OCR)
+    extractedText: { fontSize: 14, color: Colors.text, lineHeight: 22, backgroundColor: Colors.backgroundDark, padding: Spacing.m, borderRadius: 12, borderWidth: 1, borderColor: Colors.borderLight },
+    ocrConfRow: { flexDirection: 'row', alignItems: 'center', marginTop: Spacing.s, justifyContent: 'flex-end' },
+    ocrConfText: { fontSize: 12, color: Colors.textMuted, fontWeight: '600' },
 
     explanation: { fontSize: 15, color: Colors.textLight, lineHeight: 24, fontStyle: 'italic' },
 
     tipRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: Spacing.s },
     tipText: { fontSize: 14, color: Colors.text, flex: 1, lineHeight: 21 },
+
+    // URL Analysis
+    urlRiskRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.s, gap: 8 },
+    urlRiskLabel: { fontSize: 14, fontWeight: '700', color: Colors.text },
+    urlRiskBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+    urlRiskScore: { fontSize: 14, fontWeight: '800' },
+    urlItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+    urlText: { fontSize: 13, color: Colors.textLight, flex: 1 },
+    urlWarningRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
+    urlWarningText: { fontSize: 13, color: Colors.suspicious, flex: 1, lineHeight: 18 },
+
+    // Processing time meta card
+    metaCard: {
+        backgroundColor: Colors.backgroundDark, borderRadius: 14, padding: Spacing.m, marginVertical: Spacing.s,
+        borderWidth: 1, borderColor: Colors.borderLight,
+    },
+    metaRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: Colors.borderLight, gap: 8 },
+    metaLabel: { flex: 1, fontSize: 13, color: Colors.textLight, fontWeight: '600' },
+    metaValue: { fontSize: 13, fontWeight: '800', color: Colors.text },
 
     actions: { marginTop: Spacing.m },
     outlineBtn: {
