@@ -1,7 +1,7 @@
 /**
  * API Service Layer — Connects frontend to the FastAPI backend
  * All backend calls go through this file.
- * 
+ *
  * Backend endpoints covered:
  *   POST /api/predict         → analyzeMessage()
  *   POST /api/predict-image   → analyzeImage()
@@ -16,9 +16,12 @@
  *   GET  /health              → healthCheck()
  */
 
-// ⚠️ CHANGE THIS to your PC's IP address for device testing
-// Find your IP: Run `ipconfig` in PowerShell and look for IPv4 Address
-const API_BASE_URL = "http://localhost:8000";  // ← Replace with your IP
+// ⚠️ CHANGE THIS to your deployed backend URL or PC's local IP for device testing
+// Find your IP: Run `ipconfig` (Windows) or `ifconfig` (Mac/Linux) → IPv4 Address
+const API_BASE_URL = "https://koushik-vardhan1-aadhya-backend.hf.space"; // ← Replace with your Render URL or local IP
+
+
+import * as FileSystem from 'expo-file-system/legacy';
 
 // ---------------------------------------------------------------------------
 // Types matching backend response
@@ -26,7 +29,7 @@ const API_BASE_URL = "http://localhost:8000";  // ← Replace with your IP
 export interface PredictResponse {
     message: string;
     is_fraud: boolean;
-    scam_probability: number;        // 0 to 100
+    scam_probability: number; // 0 to 100
     risk_level: "Safe" | "Suspicious" | "High Risk";
     fraud_type: string | null;
     suspicious_keywords: string[];
@@ -44,7 +47,6 @@ export interface PredictResponse {
         layer1_ms: number;
         layer2_ms: number;
     };
-    // Translation fields (when language != "en")
     explanation_original?: string;
     prevention_tips_original?: string[];
     translated_to?: string;
@@ -78,33 +80,28 @@ export interface StatsResponse {
 
 export interface ScanItem {
     id: string;
-    created_at: string;
-    message_preview: string;
-    scam_probability: number;
-    risk_level: string;
-    fraud_type: string | null;
-    language: string;
+    imageUri: string;
 }
 
-export interface ScanDetail extends ScanItem {
-    full_message: string;
-    suspicious_keywords: string[];
-    explanation: string;
-    prevention_tips: string[];
+export interface ScanDetail {
+    id: string;
+    message: string;
+    language: string;
+    result: Record<string, any>;
+    created_at: string;
 }
 
 export interface CommunityReport {
     id: string;
-    created_at: string;
+    message: string;
     fraud_type: string;
     risk_level: string;
-    message_preview: string;
+    created_at: string;
 }
 
 export interface KeywordItem {
     keyword: string;
-    fraud_type: string;
-    frequency: number;
+    count: number;
 }
 
 export interface TranslateResponse {
@@ -117,6 +114,19 @@ export interface TranslateResponse {
 export interface LanguageOption {
     code: string;
     name: string;
+}
+
+// ---------------------------------------------------------------------------
+// Helper — parse FastAPI error detail (can be string, list, or object)
+// ---------------------------------------------------------------------------
+function parseErrorDetail(errorData: any, fallback: string): string {
+    if (!errorData) return fallback;
+    const detail = errorData.detail;
+    if (!detail) return fallback;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) return detail.map((e: any) => e.msg || JSON.stringify(e)).join(", ");
+    if (typeof detail === "object") return JSON.stringify(detail);
+    return fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,7 +179,7 @@ export async function analyzeMessage(
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || `Server error (${response.status})`);
+        throw new Error(parseErrorDetail(errorData, `Server error (${response.status})`));
     }
 
     return await response.json();
@@ -177,43 +187,47 @@ export async function analyzeMessage(
 
 // ---------------------------------------------------------------------------
 // 📸 POST /api/predict-image — Analyze screenshot for fraud (OCR + detection)
+// Uses XMLHttpRequest instead of fetch — fixes React Native FormData file upload bug
+// where fetch serializes the {uri, name, type} object as a string instead of a file
 // ---------------------------------------------------------------------------
+
 export async function analyzeImage(
     imageUri: string,
     language: string = "en"
 ): Promise<ImagePredictResponse> {
+
     const formData = new FormData();
+    formData.append("file", {
+        uri: imageUri,
+        name: "image.jpg",
+        type: "image/jpeg",
+    } as any); // ← XHR handles {uri,name,type} correctly unlike fetch
 
-    try {
-        // Fetch the local file/blob from the URI (Works for Web & Native)
-        const fileResponse = await fetch(imageUri);
-        const blob = await fileResponse.blob();
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${API_BASE_URL}/api/predict-image?language=${language}`);
+        xhr.timeout = 60000;
 
-        // Append the blob to FormData
-        formData.append("file", blob, "screenshot.jpg");
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(JSON.parse(xhr.responseText));
+            } else {
+                let detail = `Server error (${xhr.status})`;
+                try {
+                    const err = JSON.parse(xhr.responseText);
+                    detail = parseErrorDetail(err, detail);
+                } catch {}
+                reject(new Error(detail));
+            }
+        };
+        xhr.onerror = () =>
+            reject(new Error("Cannot connect to server at " + API_BASE_URL));
+        xhr.ontimeout = () =>
+            reject(new Error("Request timed out. Check if backend is running."));
 
-    } catch (error) {
-        throw new Error("Failed to process image file. Please try again.");
-    }
-
-    const response = await fetchWithTimeout(
-        `${API_BASE_URL}/api/predict-image?language=${language}`,
-        {
-            method: "POST",
-            body: formData,
-            // Don't set Content-Type — fetch sets it with boundary for FormData
-        },
-        60000 // 60s timeout for OCR
-    );
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || `Server error (${response.status})`);
-    }
-
-    return await response.json();
-}
-
+        xhr.send(formData);
+    });
+} 
 // ---------------------------------------------------------------------------
 // 📊 GET /api/stats — Real-time detection statistics
 // ---------------------------------------------------------------------------
@@ -243,7 +257,7 @@ export async function saveScan(
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || `Failed to save scan (${response.status})`);
+        throw new Error(parseErrorDetail(errorData, `Failed to save scan (${response.status})`));
     }
 
     return await response.json();
@@ -337,23 +351,23 @@ export async function translateText(
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.detail || `Translation failed (${response.status})`);
+        throw new Error(parseErrorDetail(errorData, `Translation failed (${response.status})`));
     }
 
     return await response.json();
 }
 
 // ---------------------------------------------------------------------------
-// 🌐 GET /api/languages — Supported languages list
+// 🌐 GET /api/languages — Get supported languages
 // ---------------------------------------------------------------------------
 export async function getLanguages(): Promise<LanguageOption[]> {
     try {
-        const response = await fetchWithTimeout(
-            `${API_BASE_URL}/api/languages`,
-            {},
-            5000
-        );
-        if (!response.ok) throw new Error("Failed to fetch languages");
+        const response = await fetchWithTimeout(`${API_BASE_URL}/api/languages`, {}, 10000);
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch languages (${response.status})`);
+        }
+
         const data = await response.json();
         return data.languages;
     } catch {
