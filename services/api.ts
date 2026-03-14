@@ -16,12 +16,15 @@
  *   GET  /health              → healthCheck()
  */
 
-// ⚠️ CHANGE THIS to your PC's IP address for device testing
-// Find your IP: Run `ipconfig` in PowerShell and look for IPv4 Address
-const API_BASE_URL = "http://localhost:8000";  // ← Replace with your IP
+// ⚠️ CHANGE THIS to your deployed backend URL or PC's local IP for device testing
+// Find your IP: Run `ipconfig` (Windows) or `ifconfig` (Mac/Linux) → IPv4 Address
+const API_BASE_URL = "https://koushik-vardhan1-aadhya-backend.hf.space"; // ← Replace with your Render URL or local IP
+
+
+import * as FileSystem from 'expo-file-system/legacy';
 
 // ---------------------------------------------------------------------------
-// Types matching backend response  koushik-vardhan1-aadhya-backend.hf.space
+// Types matching backend response
 // ---------------------------------------------------------------------------
 export interface PredictResponse {
     message: string;
