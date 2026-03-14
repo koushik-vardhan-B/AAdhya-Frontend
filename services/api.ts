@@ -18,10 +18,10 @@
 
 // ⚠️ CHANGE THIS to your PC's IP address for device testing
 // Find your IP: Run `ipconfig` in PowerShell and look for IPv4 Address
-const API_BASE_URL = "http://localhost:8000";  // ← Replace with your IP
+const API_BASE_URL = "https://koushik-vardhan1-aadhya-backend.hf.space";  // ← Hugging Face Space
 
 // ---------------------------------------------------------------------------
-// Types matching backend response
+// Types matching backend response  koushik-vardhan1-aadhya-backend.hf.space
 // ---------------------------------------------------------------------------
 export interface PredictResponse {
     message: string;
